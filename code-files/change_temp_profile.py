@@ -1,3 +1,7 @@
+# ########################################################################
+# Demonstrating how to change the temperature profile of the midlatitude summer file
+# ######################################################################## 
+
 # In[]:
 # ########################################################################
 # Packages
@@ -15,7 +19,7 @@ import matplotlib.pyplot as plt
 # Specify file path that you want to read in
 file_path = "/home/jaminkiukkonen/libRadtran-2.0.5/data/atmmod/afglms.dat"
 
-# Read in the file as a NumPy array
+# Read in the midlatitude summer file as a NumPy array
 arr = np.genfromtxt(file_path, dtype='float')
 
 # The third column contains the temperature profile
@@ -50,7 +54,7 @@ print(Q4_profiles.shape)    # (18, 19)
 
 new_pressure_levels = arr[:, 1]    # The 2nd col contains the pressure levels
 original_pressure_levels = np.array([1, 5, 10, 30, 50, 70, 100, 125, 175, 225, 300, 400, 500, 600, 700, 800, 900, 950, 1000])
-temperatures = Q1_profiles[0, :]
+temperatures = Q1_profiles[0, :]    # One temperature profile from Q1
 interpolated_temperatures = np.interp(new_pressure_levels, original_pressure_levels, temperatures)
 
 # Visualize
