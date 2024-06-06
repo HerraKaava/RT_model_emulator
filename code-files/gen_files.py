@@ -20,7 +20,7 @@ import os
 # Set the working directory
 # #############################################################################
 
-os.chdir("/home/jaminkiukkonen/Desktop/run-libradtran/mls_files/")
+os.chdir("/home/jaminkiukkonen/Desktop/work/SummerProject/mls_files/")
 os.getcwd()
 
 # In[]:
@@ -69,7 +69,7 @@ print(mls[:, 2].shape)    # (50,)
 # afglms.dat file.
 # #############################################################################
 
-def change_T_profile(T_profile, mls, orig_levels, file_name, season):
+def change_T_profile(T_profile, mls, orig_levels, file_name):
     """
     This function writes over the temperature profile in the afglms.dat file.
     
@@ -100,23 +100,41 @@ def change_T_profile(T_profile, mls, orig_levels, file_name, season):
                delimiter=",",
                fmt="%20.6e",
                comments="#")
-    modified_afglms = "/home/jaminkiukkonen/libRadtran-2.0.5/data/atmmod/modified_afglms.dat"
-    return modified_afglms
+    return file_name
 
 # In[]:
 # #############################################################################
-# Demo on how to generate the files on a loop
+# Generate all the different midlatitude summer files (afglms.dat),
+# such that we replace the temperature profile in the afglms.dat file
+# with the temperature profile that we created our self.
+# We have 18 temperature profiles on each season (quartal),
+# which will yield in 4*18=72 different afglms.dat files.
 # ############################################################################# 
-    
-orig_levels = np.array([1, 5, 10, 30, 50, 70, 100, 125, 175, 225, 300, 
-                        400, 500, 600, 700, 800, 900, 950, 1000])
 
-for k in range(Q1_profiles.shape[0]):
-    T_profile = Q1_profiles[k, :]
-    season = "Q1"
-    file_name = "afglms" +  "_" + season + "_" + str(k)
-    change_T_profile(T_profile, mls, orig_levels, file_name, season)
-    
+def create_afglms_files(seasonal_profiles, quartal):
+    orig_pressure_levels = np.array([1,5,10,30,50,70,100,125,175,225,300,400,
+                                     500, 600, 700, 800, 900, 950, 1000])
+    file_names = []
+    for k in range(seasonal_profiles.shape[0]):
+        T_profile = seasonal_profiles[k, :]
+        file_name = "afglms" +  "_" + quartal + "_" + str(k)
+        # Call the change_T_profile() function to create the file,
+        # and while we're at it, save the file name into a list as well.
+        file_names.append(change_T_profile(T_profile, 
+                                           mls, 
+                                           orig_pressure_levels, 
+                                           file_name, 
+                                           quartal))
+    return file_names
+
+# Create the 72 modified afglms (midlatitude summer) files.
+# Note that we are saving the file names into a last as well
+afglms_file_names = []
+afglms_file_names += create_afglms_files(Q1_profiles, "Q1")
+afglms_file_names += create_afglms_files(Q2_profiles, "Q2")
+afglms_file_names += create_afglms_files(Q3_profiles, "Q3")
+afglms_file_names += create_afglms_files(Q4_profiles, "Q4")
+
 # In[]:
 # #############################################################################
 # Blablabla
@@ -129,6 +147,7 @@ def run_lib(afglms_file, deg, wlen, phi, phi0, alt, sza, vza, albedo,
     Function info here.
     
     Params:
+        afglms_file: name of the midlatitude summer file (not full path).
         deg: the degree for viewing zenith angle (VZA).
         wlen: value for wavelength.
         phi: sensor azimuth value.
@@ -175,6 +194,9 @@ def run_lib(afglms_file, deg, wlen, phi, phi0, alt, sza, vza, albedo,
         - aerosol_vulcan and aerosol_haze are set to 1.
         
     """
+    working_directory = os.getcwd()
+    path = working_directory + "/" + afglms_file
+    
     libradtran_data_files_path = "/home/jaminkiukkonen/libRadtran-2.0.5/data"
     libradtran_bin_file_loc = "/home/jaminkiukkonen/libRadtran-2.0.5/bin"
     
@@ -185,7 +207,7 @@ def run_lib(afglms_file, deg, wlen, phi, phi0, alt, sza, vza, albedo,
     input_str = f"data_files_path {libradtran_data_files_path} \n\
                 wavelength {wlen} \n\
                 aerosol_default \n\
-                atmosphere_file {afglms_file} \n\
+                atmosphere_file {path} \n\
                 aerosol_vulcan 1 \n\
                 aerosol_haze 1 \n\
                 phi {phi} \n\
