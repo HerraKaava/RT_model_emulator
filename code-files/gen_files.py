@@ -142,8 +142,8 @@ afglms_file_names += create_afglms_files(Q4_profiles, "Q4")
 
 def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float, 
             phi0: float, alt: float, sza: float, vza: float, albedo: float, 
-            tau: float, zout_type: int, output_quantity_type: int, 
-            spectral_reso: int, output_format: int):
+            tau: float, zout_type: str, output_quantity_type: str, 
+            spectral_reso: str, output_format: int):
     """
     Function info here.
     
@@ -166,34 +166,22 @@ def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float,
         
         albedo: the reflectivity of a surface.
         
+        tau: the integrated optical thickness can be set to a constant value
+        using this parameter.
+        
         zout_type: This option is used to specify the output altitudes 
         in km above surface altitude.
         You can also use "toa" for top of atmosphere, 
         "sur" for surface altitude and "cpt" for cold point tropopause.
-        In our case, we are going to use either "toa" or "sur".
-        
-            - zout_type = 0 --> "toa"
-            - zout_type = 1 --> "sur"
-                   
-        tau: the integrated optical thickness can be set to a constant value
-        using this parameter.
         
         output_quantity_type: output_quantity in libradtran can be used to
         convert radiances / irradiances to equivalent output quantity,
         where the quantity type can be one of the following:
         brightness, reflectivity, transmittance.
         
-            - output_quantity_type = 0 --> brightness
-            - output_quantity_type = 1 --> reflectivity
-            - output_quantity_type = 2 --> transmittance
-        
         spectral_reso: for both solar and thermal bands, different spectral
         resolutions are available, and can be selected using
         mol_abs_param reptran coarse / medium / fine.
-            
-            - spectral_reso = 0 --> coarse
-            - spectral_reso = 1 --> medium
-            - spectral_reso = 2 --> fine
         
         output_format: tells the script the shape of the output string 
         so that the scripts are parsed correctly.
@@ -237,28 +225,6 @@ def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float,
     # Convert degrees to radians
     vza = np.deg2rad(deg)
     
-    # Here we map all the integer options for output_quantity_type,
-    # spectral_reso, and zoat into their corrsponding string values.
-    
-    if output_quantity_type == 0:
-        output_quan = "brightness"
-    elif output_quantity_type == 1:
-        output_quan = "reflectivity"
-    elif output_quantity_type == 2:
-        output_quan = "transmittance"
-        
-    if spectral_reso == 0:
-        spect_res = "coarse"
-    elif spectral_reso == 1:
-        spect_res = "medium"
-    elif spectral_reso == 2:
-        spect_res = "fine"
-        
-    if zout_type == 0:
-        z = "toa"
-    elif zout_type == 1:
-        z = "sur"
-    
     # Input string for the configuration object
     input_str = f"data_files_path {libradtran_data_files_path} \n\
                 wavelength {wlen} \n\
@@ -272,10 +238,10 @@ def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float,
                 sza {sza} \n\
                 umu {vza} \n\
                 albedo {albedo} \n\
-                zout {z} \n\
+                zout {zout_type} \n\
                 aerosol_modify tau set {tau} \n\
-                output_quantity {output_quan} \n\
-                mol_abs_param reptran {spect_res} \n\
+                output_quantity {output_quantity_type} \n\
+                mol_abs_param reptran {spectral_reso} \n\
                 rte_solver disort \n\
                 verbose"
     
@@ -294,7 +260,6 @@ def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float,
         with open(filepath, "w") as json_file:
             json.dump(data, json_file, indent=4)
         
-    
     # Save the parameters of the current run into a dictionary
     param_config = {"atmosphere_file": afglms_file_name,
                     "degree for VZA": deg,
@@ -306,9 +271,9 @@ def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float,
                     "VZA": vza,
                     "albedo": albedo,
                     "tau": tau,
-                    "zout": z,
-                    "output quantity": output_quan,
-                    "spectral resolution": spect_res}
+                    "zout": zout_type,
+                    "output quantity": output_quantity_type,
+                    "spectral resolution": spectral_reso}
     
     # Save the parameter config into a JSON file.
     save_loc_JSON = "/home/jaminkiukkonen/Desktop/work/SummerProject/JSON_files/"
@@ -321,13 +286,15 @@ def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float,
 
 # In[]:
 # #############################################################################
-# Now we are ready to run libradtran on the different configs.
+# Test run
 # #############################################################################
 
 name = "afglms_Q3_17"
 
-run_lib(name, 45.0, 550.0, 800.0, 180.0, 100.0, 50.0, 50.0, 100.0, 1.0, 0, 1, 0, 2)
+run_lib(name, 45.0, 550.0, 800.0, 180.0, 100.0, 50.0, 50.0, 100.0, 1.0, "toa", "brightness", "coarse", 2)
 
-
-
+# In[]:
+# #############################################################################
+# Now we are ready to run libradtran on the different configs.
+# #############################################################################
 
