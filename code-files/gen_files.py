@@ -34,7 +34,7 @@ def read_netCDF4_data(filename):
         t = rootgrp["data"][:, :]
         return t
 
-# A seasonal temperature profile
+# The seasonal temperature profiles
 Q1_profiles = read_netCDF4_data("/home/jaminkiukkonen/Desktop/work/SummerProject/data/Q1_profiles.nc")
 Q2_profiles = read_netCDF4_data("/home/jaminkiukkonen/Desktop/work/SummerProject/data/Q2_profiles.nc")
 Q3_profiles = read_netCDF4_data("/home/jaminkiukkonen/Desktop/work/SummerProject/data/Q3_profiles.nc")
@@ -114,7 +114,7 @@ def change_T_profile(T_profile, mls, orig_levels, file_name):
 
 def create_afglms_files(seasonal_profiles, quartal):
     orig_pressure_levels = np.array([1,5,10,30,50,70,100,125,175,225,300,400,
-                                     500, 600, 700, 800, 900, 950, 1000])
+                                     500,600,700,800,900,950,1000])
     file_names = []
     for k in range(seasonal_profiles.shape[0]):
         T_profile = seasonal_profiles[k, :]
@@ -128,7 +128,7 @@ def create_afglms_files(seasonal_profiles, quartal):
     return file_names
 
 # Create the 72 modified afglms (midlatitude summer) files.
-# Note that we are saving the file names into a last as well
+# Note that we are saving the file names into a list as well
 afglms_file_names = []
 afglms_file_names += create_afglms_files(Q1_profiles, "Q1")
 afglms_file_names += create_afglms_files(Q2_profiles, "Q2")
