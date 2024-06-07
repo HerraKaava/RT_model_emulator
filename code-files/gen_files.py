@@ -14,6 +14,7 @@ import run_libradtran_extended as libis
 import configparser
 import glob
 import os
+import json
 
 # In[]:
 # #############################################################################
@@ -139,57 +140,94 @@ afglms_file_names += create_afglms_files(Q4_profiles, "Q4")
 # Blablabla
 # #############################################################################
 
-def run_lib(afglms_file_name, deg, wlen, phi, phi0, alt, sza, vza, albedo, 
-            zout_type, tau, output_quantity_type, spectral_reso, output_format):
+def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float, 
+            phi0: float, alt: float, sza: float, vza: float, albedo: float, 
+            tau: float, zout_type: int, output_quantity_type: int, 
+            spectral_reso: int, output_format: int):
     """
     Function info here.
     
     Params:
         afglms_file_name: name of the midlatitude summer file (not full path).
+        
         deg: the degree for viewing zenith angle (VZA).
+        
         wlen: value for wavelength.
+        
         phi: sensor azimuth value.
+        
         phi0: azimuth value.
+        
         alt: altitude value (distance from the sea level)
+        
         sza: solar zenith angle value.
+        
         vza: viewing zenith angle.
+        
         albedo: the reflectivity of a surface.
-        zout_type: zout gives the sensor altitude altitude above the ground.
-                   possible options for zout are toa (top of atmosphere),
-                   and ... ??
+        
+        zout_type: This option is used to specify the output altitudes 
+        in km above surface altitude.
+        You can also use "toa" for top of atmosphere, 
+        "sur" for surface altitude and "cpt" for cold point tropopause.
+        In our case, we are going to use either "toa" or "sur".
+        
+            - zout_type = 0 --> "toa"
+            - zout_type = 1 --> "sur"
+                   
         tau: the integrated optical thickness can be set to a constant value
         using this parameter.
+        
         output_quantity_type: output_quantity in libradtran can be used to
         convert radiances / irradiances to equivalent output quantity,
         where the quantity type can be one of the following:
         brightness, reflectivity, transmittance.
+        
+            - output_quantity_type = 0 --> brightness
+            - output_quantity_type = 1 --> reflectivity
+            - output_quantity_type = 2 --> transmittance
+        
         spectral_reso: for both solar and thermal bands, different spectral
         resolutions are available, and can be selected using
         mol_abs_param reptran coarse / medium / fine.
-        This parameter selects one of those (coarse, medium, fine).
-        output_format: needs to be one of the following: 0, 1, 2.
+            
+            - spectral_reso = 0 --> coarse
+            - spectral_reso = 1 --> medium
+            - spectral_reso = 2 --> fine
+        
+        output_format: tells the script the shape of the output string 
+        so that the scripts are parsed correctly.
+        Shapes are described in libRadtran User's Guide in section 3.1.5.
+        
+            - output_format = 0 corresponds to string shape were no umu or phi is specified. 
+            - output_format = 1 corresponds to string shape were umu is specified but phi is not.
+            - output_format = 2 corresponds to string shape were umu and phi are specified.
         
     Returns:
+        return info here.
         
     Notes:
         - VZA is converted into radians inside the function.
+        
         - phi=phi0 indicates that the sensor looks into the direction of the sun.
+        
         - phi-phi0=180(deg) means that the sun is in the back of the sensor.
+        
         - Altitude specifies the height at which the atmospheric parameters,
         such as pressure and temperature, are defined for the radiative
         transfer calculations.
+        
         - The azimuth (phi0) is only required for radiance calculations.
+        
         - Viewing direction (umu, phi) and sun position (sza, phi0)
         are defined with respect to the sensor position specified by zout.
-        - output_format = 0 corresponds to string shape were no umu or phi is specified. 
-        - output_format = 1 corresponds to string shape were umu is specified but phi is not.
-        - output_format = 2 corresponds to string shape were umu and phi are specified.
-        - output_format tells the script the shape of the output string so that 
-        scripts are parsed correctly. 
-        - Shapes are described in libRadtran User's Guide in section 3.1.5.
+        
         - aerosol_vulcan and aerosol_haze are set to 1.
         
+        - Output altitudes (zout) must be within the range 
+        defined in the atmosphere_file.
     """
+    # This provides path for the atmosphere_file
     working_directory = os.getcwd()
     path = working_directory + "/" + afglms_file_name
     
@@ -198,6 +236,28 @@ def run_lib(afglms_file_name, deg, wlen, phi, phi0, alt, sza, vza, albedo,
     
     # Convert degrees to radians
     vza = np.deg2rad(deg)
+    
+    # Here we map all the integer options for output_quantity_type,
+    # spectral_reso, and zoat into their corrsponding string values.
+    
+    if output_quantity_type == 0:
+        output_quan = "brightness"
+    elif output_quantity_type == 1:
+        output_quan = "reflectivity"
+    elif output_quantity_type == 2:
+        output_quan = "transmittance"
+        
+    if spectral_reso == 0:
+        spect_res = "coarse"
+    elif spectral_reso == 1:
+        spect_res = "medium"
+    elif spectral_reso == 2:
+        spect_res = "fine"
+        
+    if zout_type == 0:
+        z = "toa"
+    elif zout_type == 1:
+        z = "sur"
     
     # Input string for the configuration object
     input_str = f"data_files_path {libradtran_data_files_path} \n\
@@ -212,10 +272,10 @@ def run_lib(afglms_file_name, deg, wlen, phi, phi0, alt, sza, vza, albedo,
                 sza {sza} \n\
                 umu {vza} \n\
                 albedo {albedo} \n\
-                zout {zout_type} \n\
+                zout {z} \n\
                 aerosol_modify tau set {tau} \n\
-                output_quantity {output_quantity_type} \n\
-                mol_abs_param reptran {spectral_reso} \n\
+                output_quantity {output_quan} \n\
+                mol_abs_param reptran {spect_res} \n\
                 rte_solver disort \n\
                 verbose"
     
@@ -229,33 +289,34 @@ def run_lib(afglms_file_name, deg, wlen, phi, phi0, alt, sza, vza, albedo,
     with open(save_loc_ini + afglms_file_name + ".ini", "w") as f:
         conf_obj.write(f)
         
-    # Save the run config into a netCDF4 file
+    # Save the run config into a JSON file
     def save_config(data, filepath):
-        with Dataset(filepath, "w", format="NETCDF4") as nc:
-            # Description
-            nc.description = "The values of the data file correspond to these variables in this order:\
-            afglms_file_name, deg, wlen, phi, phi0, alt, sza, vza, albedo,\
-            zout_type, tau, output_quantity_type, spectral_reso" 
-            # Dimensions
-            nc.createDimension("columns", len(data))
-            # Variables
-            nc_vars = nc.createVariable("params", "f8", ("columns",))
-            # Assign the values
-            nc_vars[:] = data
+        with open(filepath, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+        
     
-    # Save the parameters of the current run into a list
-    param_config = [afglms_file_name, deg, wlen, phi, phi0, 
-                    alt, sza, vza, albedo, zout_type, tau, 
-                    output_quantity_type, spectral_reso]
+    # Save the parameters of the current run into a dictionary
+    param_config = {"atmosphere_file": afglms_file_name,
+                    "degree for VZA": deg,
+                    "wavelength": wlen,
+                    "phi": phi,
+                    "phi0": phi0,
+                    "altitude": alt,
+                    "SZA": sza,
+                    "VZA": vza,
+                    "albedo": albedo,
+                    "tau": tau,
+                    "zout": z,
+                    "output quantity": output_quan,
+                    "spectral resolution": spect_res}
     
-    # Save the parameter config into a netCDF4 file.
-    save_loc_netcdf4 = "/home/jaminkiukkonen/Desktop/work/SummerProject/netCDF4_files/"
-    save_config(param_config, save_loc_netcdf4 + afglms_file_name + ".nc")
-    
+    # Save the parameter config into a JSON file.
+    save_loc_JSON = "/home/jaminkiukkonen/Desktop/work/SummerProject/JSON_files/"
+    save_config(param_config, save_loc_JSON + afglms_file_name + ".json")
+
     
     #results_list = libis.run_conf_files_libradtran(libradtran_bin_file_loc, input_str)
     
-    # WORKING PROGESS, SCRIPT NOT READY! Help needed.
     
 
 # In[]:
@@ -263,22 +324,10 @@ def run_lib(afglms_file_name, deg, wlen, phi, phi0, alt, sza, vza, albedo,
 # Now we are ready to run libradtran on the different configs.
 # #############################################################################
 
-name = "afglms_Q4_17"
+name = "afglms_Q3_17"
 
-run_lib(name, 45, 550, 800, 180, 100, 50, 50, 100, "toa", 1.0, "reflectivity", "coarse", 2)
+run_lib(name, 45.0, 550.0, 800.0, 180.0, 100.0, 50.0, 50.0, 100.0, 1.0, 0, 1, 0, 2)
 
 
-# Perjantaille:
-
-# ValueError: could not convert string to float: 'afglms_Q4_17'
-# Ongelma atm siis se, että run configissa on str-tyyppejä,
-# jotka pitäis saada netCDF4-filuun sisään. Miten? Selvitä!
-
-# .ini -filun generointi onnistuu run_lib() -funktiossa.
-
-# Ongelma oli myös libradtranin tulosten (results_list) tallentamisessa
-# netCDF4-tiedostoon. Myöskään JSON ei onnistunut.
-# libradtranin tulosten sisältö (results_list) on monimutkainen.
-# Selvitä miten saadaan netCDF4-muotoon.
 
 
