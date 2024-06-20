@@ -304,10 +304,8 @@ def run_lib(afglms_file_name: str, vza_deg: float, wlen_min: float, wlen_max: fl
     pattern = "*.ini"
     input_files_list = sorted(glob.glob(ini_files_path + pattern))
     
+    # Libradtran outputs
     results_list = libis.run_conf_files_libradtran(libradtran_bin_file_loc, input_files_list)
-    
-    # Set display precision for floating-point numbers
-    pd.set_option('display.precision', 10)
 
     def save_output_params(results):
         # Dictionary to store the output params
@@ -366,8 +364,6 @@ def run_lib(afglms_file_name: str, vza_deg: float, wlen_min: float, wlen_max: fl
             rho2 = d["uu(umu,phi)"][0][0]
             data["Rho2"].append(rho2)
             
-            
-        # (0.1*(rho2-rho0)-0.25*(rho1-rho0)) / (0.25*0.1*(rho2-rho1)))
         ########## Spherical albedo ##########
         numerator1 = albedo1 * (np.array(data["Rho2"]) - np.array(data["Rho0"]))
         numerator2 = albedo2 * (np.array(data["Rho1"]) - np.array(data["Rho0"]))
@@ -381,6 +377,9 @@ def run_lib(afglms_file_name: str, vza_deg: float, wlen_min: float, wlen_max: fl
             path_rad = d["uu(umu,phi)"][0][0]
             data["Path_rad"].append(path_rad)
         
+        # Set display precision for floating-point numbers
+        pd.set_option('display.precision', 10)
+        
         # Create a dataframe
         df = pd.DataFrame(data)
         
@@ -390,7 +389,6 @@ def run_lib(afglms_file_name: str, vza_deg: float, wlen_min: float, wlen_max: fl
     
     save_output_params(results_list)
 
-  
 # In[]:
 # #############################################################################
 # Test run
