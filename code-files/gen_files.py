@@ -77,7 +77,8 @@ mls = np.genfromtxt(file_path, dtype="float")
 
 def modify_mls(T_profile, mls, orig_levels, file_name):
     """
-    This function writes over the temperature profile in the afglms.dat file.
+    This function writes over the temperature profile in the afglms.dat file,
+    and recalculates the air densities based on the new temperatures.
     
     Parameters:
         T_profile: the new temperature profile that you want to include in the
@@ -98,13 +99,13 @@ def modify_mls(T_profile, mls, orig_levels, file_name):
     # Change the temperature profile in mls
     mls[:, 2] = interpolated_temperatures
     
-    # Re-calculate the air densities
+    # Recalculate the air densities
     unit_conversion_constant = 10**(-4)
     K = 1.380649 * 10**(-23)     # Boltzmann constant
     p = mls[:, 1]    # Pressure levels (mb)
     T = mls[:, 2]    # Temperatures (K)
     new_ad = (p * unit_conversion_constant) / (K * T)
-    # Write over the air density column with the re-calculated air densities
+    # Write over the air density column with the recalculated air densities
     mls[:, 3] = new_ad
     
     # Write the mls array back to a text file
@@ -178,7 +179,9 @@ def run_lib(afglms_file_name: str, vza_deg: float, wlen_min: float, wlen_max: fl
         
         vza: viewing zenith angle.
         
-        albedo: the reflectivity of a surface.
+        albedo1: the reflectivity of a surface.
+        
+        albedo2: the reflectivity of a surface.
         
         tau: the integrated optical thickness can be set to a constant value
         using this parameter.
@@ -260,37 +263,9 @@ def run_lib(afglms_file_name: str, vza_deg: float, wlen_min: float, wlen_max: fl
                     #mol_tau_file abs {high_reso_path} \n\
                     mol_abs_param reptran {spectral_reso} \n\
                     rte_solver disort \n\
-                    quiet"
-                    
+                    quiet"                
         if output_quantity_type != "radiance":
-            input_str += f"\noutput_quantity {output_quantity_type}"
-            
-        return input_str
-        
-        # Save the run config into a JSON file
-        def save_config(data, filepath):
-            with open(filepath, "w") as json_file:
-                json.dump(data, json_file, indent=4)
-            
-        # Save the parameters of the current run into a dictionary
-        param_config = {"atmosphere_file": afglms_file_name,
-                        "degree for VZA": vza_deg,
-                        "wavelength lower boundary": wlen_min,
-                        "wavelength upper boundary": wlen_max,
-                        "phi": phi,
-                        "phi0": phi0,
-                        "altitude": alt,
-                        "SZA": sza,
-                        "VZA": vza,
-                        "tau": tau,
-                        "albedo": albedo,
-                        "output_quantity": output_quantity_type,
-                        "zout": zout_type}
-        
-        # Save the parameter config into a JSON file.
-        save_loc_JSON = os.getcwd() + "/JSON_files/"
-        save_config(param_config, save_loc_JSON + afglms_file_name + ".json")
-                
+            input_str += f"\noutput_quantity {output_quantity_type}" 
         return input_str
     
     input_str1 = create_input_str(albedo1, "radiance", "toa")
@@ -343,7 +318,7 @@ def run_lib(afglms_file_name: str, vza_deg: float, wlen_min: float, wlen_max: fl
             "Edir0": [],
             "Tdir": [],
             "Tdif": [],
-            "Rho0":  [],
+            "Rho0": [],
             "Rho1": [],
             "Rho2": [],
             "Spherical_albedo": [],
