@@ -4,6 +4,15 @@
 
 # In[]:
 # #############################################################################
+# Set the working directory
+# #############################################################################
+
+import os
+os.chdir("/home/jaminkiukkonen/Desktop/work/SummerProject")
+os.getcwd()
+
+# In[]:
+# #############################################################################
 # Packages
 # #############################################################################
 
@@ -13,16 +22,8 @@ import matplotlib.pyplot as plt
 import run_libradtran_extended as libis
 import configparser
 import glob
-import os
 import json
-
-# In[]:
-# #############################################################################
-# Set the working directory
-# #############################################################################
-
-os.chdir("/home/jaminkiukkonen/Desktop/work/SummerProject/mls_files/")
-os.getcwd()
+import pandas as pd
 
 # In[]:
 # #############################################################################
@@ -40,10 +41,10 @@ Q2_profiles = read_netCDF4_data("/home/jaminkiukkonen/Desktop/work/SummerProject
 Q3_profiles = read_netCDF4_data("/home/jaminkiukkonen/Desktop/work/SummerProject/data/Q3_profiles.nc")
 Q4_profiles = read_netCDF4_data("/home/jaminkiukkonen/Desktop/work/SummerProject/data/Q4_profiles.nc")
 
-print(Q1_profiles.shape)    # (18, 19)
-print(Q2_profiles.shape)    # (18, 19)
-print(Q3_profiles.shape)    # (18, 19)
-print(Q4_profiles.shape)    # (18, 19)
+# print(Q1_profiles.shape)    # (18, 19)
+# print(Q2_profiles.shape)    # (18, 19)
+# print(Q3_profiles.shape)    # (18, 19)
+# print(Q4_profiles.shape)    # (18, 19)
 
 # In[]:
 # #############################################################################
@@ -57,10 +58,14 @@ file_path = "/home/jaminkiukkonen/libRadtran-2.0.5/data/atmmod/afglms.dat"
 mls = np.genfromtxt(file_path, dtype="float")
 
 # The 2nd column contains the pressure levels
-print(mls[:, 1].shape)    # (50,)
+# print(mls[:, 1].shape)    # (50,)
 
 # The 3rd column contains the temperature profile
-print(mls[:, 2].shape)    # (50,)
+# print(mls[:, 2].shape)    # (50,)
+
+# In[]:
+    
+# print(mls[:, 1] / ((mls[:, 2] * mls[:, 3])))
 
 # In[]:
 # #############################################################################
@@ -70,7 +75,7 @@ print(mls[:, 2].shape)    # (50,)
 # afglms.dat file.
 # #############################################################################
 
-def change_T_profile(T_profile, mls, orig_levels, file_name):
+def modify_mls(T_profile, mls, orig_levels, file_name):
     """
     This function writes over the temperature profile in the afglms.dat file.
     
@@ -93,16 +98,26 @@ def change_T_profile(T_profile, mls, orig_levels, file_name):
     # Change the temperature profile in mls
     mls[:, 2] = interpolated_temperatures
     
+    # Re-calculate the air densities
+    unit_conversion_constant = 10**(-4)
+    K = 1.380649 * 10**(-23)     # Boltzmann constant
+    p = mls[:, 1]    # Pressure levels (mb)
+    T = mls[:, 2]    # Temperatures (K)
+    new_ad = (p * unit_conversion_constant) / (K * T)
+    # Write over the air density column with the re-calculated air densities
+    mls[:, 3] = new_ad
+    
     # Write the mls array back to a text file
     col_names = " z(km), p(mb), T(K), air(cm-3), o3(cm-3), o2(cm-3), h2o(cm-3), co2(cm-3), no2(cm-3)"
-    np.savetxt(file_name, 
+    path = os.getcwd() + "/mls_files/" 
+    np.savetxt(path + file_name, 
                mls, 
                header=col_names, 
                delimiter=",",
                fmt="%20.6e",
                comments="#")
-    return file_name
-
+    return file_name  
+    
 # In[]:
 # #############################################################################
 # Generate all the different midlatitude summer files (afglms.dat),
@@ -121,10 +136,10 @@ def create_afglms_files(seasonal_profiles, quartal):
         file_name = "afglms" +  "_" + quartal + "_" + str(k)
         # Call the change_T_profile() function to create the file,
         # and while we're at it, save the file name into a list as well.
-        file_names.append(change_T_profile(T_profile, 
-                                           mls, 
-                                           orig_pressure_levels, 
-                                           file_name))
+        file_names.append(modify_mls(T_profile, 
+                                     mls, 
+                                     orig_pressure_levels, 
+                                     file_name))
     return file_names
 
 # Create the 72 modified afglms (midlatitude summer) files.
@@ -133,30 +148,29 @@ afglms_file_names = []
 afglms_file_names += create_afglms_files(Q1_profiles, "Q1")
 afglms_file_names += create_afglms_files(Q2_profiles, "Q2")
 afglms_file_names += create_afglms_files(Q3_profiles, "Q3")
-afglms_file_names += create_afglms_files(Q4_profiles, "Q4")
+afglms_file_names += create_afglms_files(Q4_profiles, "Q4") 
 
 # In[]:
 # #############################################################################
 # Blablabla
 # #############################################################################
 
-def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float, 
-            phi0: float, alt: float, sza: float, vza: float, albedo: float, 
-            tau: float, zout_type: str, output_quantity_type: str, 
-            spectral_reso: str, output_format: int):
+def run_lib(afglms_file_name: str, vza_deg: float, wlen_min: float, wlen_max: float, 
+            phi: float, phi0: float, alt: float, sza: float, vza: float,
+            albedo1: float, albedo2: float,tau: float, output_format: int, spectral_reso: str):
     """
     Function info here.
     
     Params:
         afglms_file_name: name of the midlatitude summer file (not full path).
         
-        deg: the degree for viewing zenith angle (VZA).
+        vza_deg: the degree for viewing zenith angle (VZA).
         
         wlen: value for wavelength.
         
-        phi: sensor azimuth value.
+        phi: sensor azimuth angle
         
-        phi0: azimuth value.
+        phi0: solar azimuth angle
         
         alt: altitude value (distance from the sea level)
         
@@ -215,75 +229,193 @@ def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float,
         - Output altitudes (zout) must be within the range 
         defined in the atmosphere_file.
     """
+    albedo0 = 0.0
+    
     # This provides path for the atmosphere_file
-    working_directory = os.getcwd()
-    path = working_directory + "/" + afglms_file_name
+    path_afglms = os.getcwd() + "/mls_files/" + afglms_file_name
     
     libradtran_data_files_path = "/home/jaminkiukkonen/libRadtran-2.0.5/data"
     libradtran_bin_file_loc = "/home/jaminkiukkonen/libRadtran-2.0.5/bin"
     
     # Convert degrees to radians
-    vza = np.deg2rad(deg)
+    vza = np.deg2rad(vza_deg)
     
-    # Input string for the configuration object
-    input_str = f"data_files_path {libradtran_data_files_path} \n\
-                wavelength {wlen} \n\
-                aerosol_default \n\
-                atmosphere_file {path} \n\
-                aerosol_vulcan 1 \n\
-                aerosol_haze 1 \n\
-                phi {phi} \n\
-                phi0 {phi0} \n\
-                altitude {alt} \n\
-                sza {sza} \n\
-                umu {vza} \n\
-                albedo {albedo} \n\
-                zout {zout_type} \n\
-                aerosol_modify tau set {tau} \n\
-                output_quantity {output_quantity_type} \n\
-                mol_abs_param reptran {spectral_reso} \n\
-                rte_solver disort \n\
-                verbose"
-    
-    conf_obj = configparser.ConfigParser()
-    conf_obj["parser_options"] = {"output_format": output_format,
-                                "umu_length": vza.size}
-    conf_obj["main_str"] = {"input_str": input_str}
-    
-    # Save the run configuration into a .ini file
-    save_loc_ini = "/home/jaminkiukkonen/Desktop/work/SummerProject/ini_files/"
-    with open(save_loc_ini + afglms_file_name + ".ini", "w") as f:
-        conf_obj.write(f)
+    def create_input_str(albedo, output_quantity_type, zout_type):
+        # Input string for the configuration object
+        high_reso_path = "/home/jaminkiukkonen/Desktop/work/SummerProject/uvspec_afglms_libis_flex_500-800nm.nc"
+        input_str = f"data_files_path {libradtran_data_files_path} \n\
+                    wavelength {wlen_min} {wlen_max} \n\
+                    aerosol_default \n\
+                    atmosphere_file {path_afglms} \n\
+                    aerosol_vulcan 1 \n\
+                    aerosol_haze 1 \n\
+                    phi {phi} \n\
+                    phi0 {phi0} \n\
+                    altitude {alt} \n\
+                    sza {sza} \n\
+                    umu {vza} \n\
+                    albedo {albedo} \n\
+                    zout {zout_type} \n\
+                    aerosol_modify tau set {tau} \n\
+                    #mol_tau_file abs {high_reso_path} \n\
+                    mol_abs_param reptran {spectral_reso} \n\
+                    rte_solver disort \n\
+                    quiet"
+                    
+        if output_quantity_type != "radiance":
+            input_str += f"\noutput_quantity {output_quantity_type}"
+            
+        return input_str
         
-    # Save the run config into a JSON file
-    def save_config(data, filepath):
-        with open(filepath, "w") as json_file:
-            json.dump(data, json_file, indent=4)
+        # Save the run config into a JSON file
+        def save_config(data, filepath):
+            with open(filepath, "w") as json_file:
+                json.dump(data, json_file, indent=4)
+            
+        # Save the parameters of the current run into a dictionary
+        param_config = {"atmosphere_file": afglms_file_name,
+                        "degree for VZA": vza_deg,
+                        "wavelength lower boundary": wlen_min,
+                        "wavelength upper boundary": wlen_max,
+                        "phi": phi,
+                        "phi0": phi0,
+                        "altitude": alt,
+                        "SZA": sza,
+                        "VZA": vza,
+                        "tau": tau,
+                        "albedo": albedo,
+                        "output_quantity": output_quantity_type,
+                        "zout": zout_type}
         
-    # Save the parameters of the current run into a dictionary
-    param_config = {"atmosphere_file": afglms_file_name,
-                    "degree for VZA": deg,
-                    "wavelength": wlen,
-                    "phi": phi,
-                    "phi0": phi0,
-                    "altitude": alt,
-                    "SZA": sza,
-                    "VZA": vza,
-                    "albedo": albedo,
-                    "tau": tau,
-                    "zout": zout_type,
-                    "output quantity": output_quantity_type,
-                    "spectral resolution": spectral_reso}
+        # Save the parameter config into a JSON file.
+        save_loc_JSON = os.getcwd() + "/JSON_files/"
+        save_config(param_config, save_loc_JSON + afglms_file_name + ".json")
+                
+        return input_str
     
-    # Save the parameter config into a JSON file.
-    save_loc_JSON = "/home/jaminkiukkonen/Desktop/work/SummerProject/JSON_files/"
-    save_config(param_config, save_loc_JSON + afglms_file_name + ".json")
+    input_str1 = create_input_str(albedo1, "radiance", "toa")
+    input_str2 = create_input_str(albedo1, "radiance", "sur")
+    input_str3 = create_input_str(albedo1, "reflectivity", "sur")
+    input_str4 = create_input_str(albedo0, "reflectivity", "toa")
+    input_str5 = create_input_str(albedo1, "reflectivity", "toa")
+    input_str6 = create_input_str(albedo2, "reflectivity", "toa")
+    input_str7 = create_input_str(albedo0, "radiance", "toa")
+    
+    def create_conf_obj(input_params):
+        conf_obj = configparser.ConfigParser()
+        conf_obj["parser_options"] = {"output_format": output_format,
+                                      "umu_length": vza.size}
+        conf_obj["main_str"] = {"input_str": input_params}
+        return conf_obj
+        
+    conf_obj1 = create_conf_obj(input_str1)
+    conf_obj2 = create_conf_obj(input_str2)
+    conf_obj3 = create_conf_obj(input_str3)
+    conf_obj4 = create_conf_obj(input_str4)
+    conf_obj5 = create_conf_obj(input_str5)
+    conf_obj6 = create_conf_obj(input_str6)
+    conf_obj7 = create_conf_obj(input_str7)
+    
+    conf_obj_list = [conf_obj1, conf_obj2, conf_obj3, conf_obj4, conf_obj5, conf_obj6, conf_obj7]
+    
+    for idx, conf_obj in enumerate(conf_obj_list):
+        # Save the run configuration into a .ini file
+        path_ini = os.getcwd() + "/ini_files/"
+        with open(path_ini + afglms_file_name + "_conf_obj" + str(idx + 1) + ".ini", "w") as f:
+            conf_obj.write(f)
+            
+    # Selecting the .ini files
+    ini_files_path = "/home/jaminkiukkonen/Desktop/work/SummerProject/ini_files/"
+    pattern = "*.ini"
+    input_files_list = sorted(glob.glob(ini_files_path + pattern))
+    
+    results_list = libis.run_conf_files_libradtran(libradtran_bin_file_loc, input_files_list)
+    
+    # Set display precision for floating-point numbers
+    pd.set_option('display.precision', 10)
 
-    
-    #results_list = libis.run_conf_files_libradtran(libradtran_bin_file_loc, input_str)
-    
-    
+    def save_output_params(results):
+        # Dictionary to store the output params
+        data = {
+            "Wavelength": [],
+            "TOA_RAD": [],
+            "Edif0": [],
+            "Edir0": [],
+            "Tdir": [],
+            "Tdif": [],
+            "Rho0":  [],
+            "Rho1": [],
+            "Rho2": [],
+            "Spherical_albedo": [],
+            "albedo1": np.repeat(albedo1, repeats=len(results[0])),
+            "albedo2": np.repeat(albedo2, repeats=len(results[0])),
+            "Path_rad": []
+        }
+        ########## uu (TOA_RAD) ##########
+        # Extract lambda (wavelength) and uu (TOA_RAD) from the 1st list
+        for d in results[0]:
+            lam = d["lambda"]
+            toa_rad = d["uu(umu,phi)"][0][0]
+            data["Wavelength"].append(lam)
+            data["TOA_RAD"].append(toa_rad)
 
+        ########## edn (edif0), edir (edir0) ##########
+        # Extract edn and edir from the 2nd list
+        for d in results[1]:
+            edif0 = d["edn"]
+            edir0 = d["edir"]
+            data["Edif0"].append(edif0)
+            data["Edir0"].append(edir0)
+            
+        ########## edir (tdir), edn (tdif) ##########
+        # Extract edir and edn from the 3rd list
+        for d in results[2]:
+            tdir = d["edir"]
+            tdif = d["edn"]
+            data["Tdir"].append(tdir)
+            data["Tdif"].append(tdif)
+        
+        ########## Rho0, Rho1, Rho2 ##########
+        # Extract rho0 from the 4th list
+        for d in results[3]:
+            rho0 = d["uu(umu,phi)"][0][0]
+            data["Rho0"].append(rho0)
+            
+        # Extract rho1 from the 5th list
+        for d in results[4]:
+            rho1 = d["uu(umu,phi)"][0][0]
+            data["Rho1"].append(rho1)
+            
+        # Extract rho2 from the 6th list
+        for d in results[5]:
+            rho2 = d["uu(umu,phi)"][0][0]
+            data["Rho2"].append(rho2)
+            
+            
+        # (0.1*(rho2-rho0)-0.25*(rho1-rho0)) / (0.25*0.1*(rho2-rho1)))
+        ########## Spherical albedo ##########
+        numerator1 = albedo1 * (np.array(data["Rho2"]) - np.array(data["Rho0"]))
+        numerator2 = albedo2 * (np.array(data["Rho1"]) - np.array(data["Rho0"]))
+        denominator = albedo2 * albedo1 * (np.array(data["Rho2"]) - np.array(data["Rho1"]))
+        spherical_albedo = (numerator1 - numerator2) / denominator
+        data["Spherical_albedo"] = spherical_albedo
+            
+        ########## Path radiance ##########
+        # Extract path radiance from the 7th (last) list
+        for d in results[6]:
+            path_rad = d["uu(umu,phi)"][0][0]
+            data["Path_rad"].append(path_rad)
+        
+        # Create a dataframe
+        df = pd.DataFrame(data)
+        
+        # Save df DataFrame into JSON file
+        output_params_path = "/home/jaminkiukkonen/Desktop/work/SummerProject/output_params/"
+        df.to_json(output_params_path + afglms_file_name + ".json", orient="columns", indent=4)
+    
+    save_output_params(results_list)
+
+  
 # In[]:
 # #############################################################################
 # Test run
@@ -291,10 +423,17 @@ def run_lib(afglms_file_name: str, deg: float, wlen: float, phi: float,
 
 name = "afglms_Q3_17"
 
-run_lib(name, 45.0, 550.0, 800.0, 180.0, 100.0, 50.0, 50.0, 100.0, 1.0, "toa", "brightness", "coarse", 2)
-
-# In[]:
-# #############################################################################
-# Now we are ready to run libradtran on the different configs.
-# #############################################################################
-
+y = run_lib(afglms_file_name=name, 
+            vza_deg=45.0, 
+            wlen_min=500.0, 
+            wlen_max=800.0, 
+            phi=180.0, 
+            phi0=180.0, 
+            alt=1.0, 
+            sza=40.0, 
+            vza=15.0, 
+            albedo1=0.15,
+            albedo2=0.25, 
+            tau=1.0,
+            output_format=2, 
+            spectral_reso="coarse")
