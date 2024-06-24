@@ -72,7 +72,8 @@ mls = np.genfromtxt(file_path, dtype="float")
 # A function to write over the temperature profile in the midlatitude summer 
 # file (afglms.dat). To achieve this, we need to perform interpolation on the 
 # seasonal temperature profile so that they match the pressure levels in the
-# afglms.dat file.
+# afglms.dat file. In addition to this, this function recalculates
+# the air densities based on the new temperature profile.
 # #############################################################################
 
 def modify_mls(T_profile, mls, orig_levels, file_name):
@@ -90,13 +91,13 @@ def modify_mls(T_profile, mls, orig_levels, file_name):
                 This is used to name the file so we can trace back to it.
         
     Returns:
-        The file path of the modified midlatitude summer file.
+        The name of the modified midlatitude summer file.
     """
     new_pressure_levels = mls[:, 1]
     interpolated_temperatures = np.interp(new_pressure_levels,
                                           orig_levels,
                                           T_profile)
-    # Change the temperature profile in mls
+    # Change the temperature profile
     mls[:, 2] = interpolated_temperatures
     
     # Recalculate the air densities
@@ -135,8 +136,8 @@ def create_afglms_files(seasonal_profiles, quartal):
     for k in range(seasonal_profiles.shape[0]):
         T_profile = seasonal_profiles[k, :]
         file_name = "afglms" +  "_" + quartal + "_" + str(k)
-        # Call the change_T_profile() function to create the file,
-        # and while we're at it, save the file name into a list as well.
+        # Call the modify_mls() function to create the file,
+        # and save the file name into a list.
         file_names.append(modify_mls(T_profile, 
                                      mls, 
                                      orig_pressure_levels, 
