@@ -26,13 +26,15 @@ def run_lib(afglms_file_name: str, wlen_min: float, wlen_max: float,
         
         vza_deg: the degree for viewing zenith angle (VZA).
         
-        wlen: value for wavelength.
+        wlen_min: minimum value for wavelength.
         
-        phi: sensor azimuth angle
+        wlen_max: maximum value for wavelength.
         
-        phi0: solar azimuth angle
+        phi: sensor azimuth angle.
         
-        alt: altitude value (distance from the sea level)
+        phi0: solar azimuth angle.
+        
+        alt: altitude value (distance from the sea level).
         
         sza: solar zenith angle value.
         
@@ -45,18 +47,8 @@ def run_lib(afglms_file_name: str, wlen_min: float, wlen_max: float,
         tau: the integrated optical thickness can be set to a constant value
         using this parameter.
         
-        zout_type: This option is used to specify the output altitudes 
-        in km above surface altitude.
-        You can also use "toa" for top of atmosphere, 
-        "sur" for surface altitude and "cpt" for cold point tropopause.
-        
-        output_quantity_type: output_quantity in libradtran can be used to
-        convert radiances / irradiances to equivalent output quantity,
-        where the quantity type can be one of the following:
-        brightness, reflectivity, transmittance.
-        
     Returns:
-        return info here.
+        None.
         
     Notes:
         - phi=phi0 indicates that the sensor looks into the direction of the sun.
@@ -74,6 +66,16 @@ def run_lib(afglms_file_name: str, wlen_min: float, wlen_max: float,
         
         - Output altitudes (zout) must be within the range 
         defined in the atmosphere_file.
+        
+        - output_quantity_type param in libradtran can be used to
+        convert radiances / irradiances to equivalent output quantity,
+        where the quantity type can be one of the following:
+        brightness, reflectivity, transmittance.
+        
+        - zout_type param is used to specify the output altitudes 
+        in km above surface altitude.
+        You can also use "toa" for top of atmosphere, 
+        "sur" for surface altitude and "cpt" for cold point tropopause.
     """
     albedo0 = 0
     
@@ -216,8 +218,7 @@ def run_lib(afglms_file_name: str, wlen_min: float, wlen_max: float,
             "albedo1": np.repeat(albedo1, repeats=len(results[0])),
             "albedo2": np.repeat(albedo2, repeats=len(results[0]))
         }
-        ########## uu (Rho0) ##########
-        # Extract lambda (wavelength) and uu (TOA_RAD) from the 1st list
+        ########## lambda (wavelength), uu (Rho0) ##########
         for d in results[0]:
             lam = d["lambda"]
             Rho0 = d["uu(umu,phi)"][0][0]
@@ -225,19 +226,16 @@ def run_lib(afglms_file_name: str, wlen_min: float, wlen_max: float,
             data["rho0"].append(Rho0)
 
         ########## uu (Rho1) ##########
-        # Extract edn and edir from the 2nd list
         for d in results[1]:
             Rho1 = d["uu(umu,phi)"][0][0]
             data["rho1"].append(Rho1)
 
         ########## uu(Rho2) ##########
-        # Extract edir and edn from the 3rd list
         for d in results[2]:
             Rho2 = d["uu(umu,phi)"][0][0]
             data["rho2"].append(Rho2)
 
         ########## down ##########
-        # Extract rho0 from the 4th list
         for d in results[3]:
             tdir_down = d["edir"]
             tdif_down = d["edn"]
