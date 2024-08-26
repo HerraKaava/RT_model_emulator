@@ -80,7 +80,7 @@ def run_lib(afglms_file_name: str, wlen_min: float, wlen_max: float,
     albedo0 = 0
     
     # This provides path for the atmosphere_file
-    path_afglms = "/fmi/projappl/project_2004400/jamin/data/libradtran_data/mls_files/" + afglms_file_name
+    path_afglms = "/fmi/projappl/project_2001985/jamin/data/libradtran_data/mls_files/" + afglms_file_name
     
     libradtran_general_path = "/fmi/projappl/project_2001985/APPS/libRadtran/libRadtran-2.0.4"
     libradtran_data_files_path = f"{libradtran_general_path}/data"
@@ -88,13 +88,13 @@ def run_lib(afglms_file_name: str, wlen_min: float, wlen_max: float,
     libradtran_kurudz_full_path = f"{libradtran_general_path}/data/solar_flux/kurudz_full.dat"
     
     # High resolution files path
-    hapi_file_path = f"/fmi/projappl/project_2004400/jamin/data/libradtran_data/hapi_output_files/uvspec_{afglms_file_name}.nc"
+    hapi_file_path = f"/fmi/projappl/project_2001985/jamin/data/libradtran_data/hapi_output_files/uvspec_{afglms_file_name}.nc"
     
     # ini file save location
-    ini_files_save_loc = "/fmi/projappl/project_2004400/jamin/data/libradtran_data/ini_files/"
+    ini_files_save_loc = "/fmi/projappl/project_2001985/jamin/data/libradtran_data/ini_files/"
     
     # Saving location of libradtran output
-    output_file_loc_JSON = "/fmi/projappl/project_2004400/jamin/data/libradtran_data/output_params/"
+    output_file_loc_JSON = "/fmi/projappl/project_2001985/jamin/data/libradtran_data/output_params/"
     
     # Convert degrees to radians
     vza_deg = vza
